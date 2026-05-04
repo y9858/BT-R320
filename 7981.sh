@@ -50,3 +50,4 @@ rm -rf feeds/packages/lang/rust
 git clone --depth 1 https://github.com/y9858/rust feeds/packages/lang/rust
 
 sed -i '1s/3.31/3.30/' feeds/luci/libs/rpcd-mod-luci/src/CMakeLists.txt
+sed -i '1s/3.31/3.30/' feeds/luci/libs/rpcd-mod-rrdns/src/CMakeLists.txt
