@@ -1,4 +1,4 @@
-name: MT798X
+name: MT7981
 
 on:
   workflow_dispatch:
@@ -8,15 +8,15 @@ on:
 permissions: write-all
 
 env:
-  REPO_URL: https://github.com/RuijieNetworksCommunity/MT798X-6.6-24.10.git
-  REPO_BRANCH: mt798x-mt799x-mtwifi_be72pro_be68u
-  CONFIG_FILE: mt798x.config
-  DIY_SCRIPT: diy.sh
+  REPO_URL: https://github.com/Yuzhii0718/immortalwrt-mt798x-6.6-padavanonly.git
+  REPO_BRANCH: openwrt-24.10-6.6
+  CONFIG_FILE: 7981.config
+  DIY_SCRIPT: 7981.sh
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: false
   UPLOAD_BIN_DIR: true
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: mt798x
+  FIRMWARE_TAG: mt7981
   TZ: Asia/Shanghai
 
 jobs:
@@ -93,7 +93,7 @@ jobs:
     - name: 更新安装feeds
       run: |
         cd $OPENWRT_PATH
-        sed -i '6d' feeds.conf.default
+        sed -i '2s/openwrt-24.10/master/' feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
