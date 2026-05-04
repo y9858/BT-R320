@@ -1,261 +1,165 @@
-# SPDX-License-Identifier: MIT
-# Copyright (C) 2026 VIKINGYFY
-
-#云编译公用核心
-name: WRT-CORE
+name: MT798X
 
 on:
-  workflow_call:
-    inputs:
-      WRT_CONFIG:
-        required: true
-        type: string
-      WRT_THEME:
-        required: true
-        type: string
-      WRT_NAME:
-        required: true
-        type: string
-      WRT_SSID:
-        required: true
-        type: string
-      WRT_WORD:
-        required: true
-        type: string
-      WRT_IP:
-        required: true
-        type: string
-      WRT_PW:
-        required: true
-        type: string
-      WRT_REPO:
-        required: true
-        type: string
-      WRT_BRANCH:
-        required: true
-        type: string
-      WRT_SOURCE:
-        required: true
-        type: string
-      WRT_PACKAGE:
-        required: false
-        type: string
-      WRT_TEST:
-        required: false
-        type: string
+  workflow_dispatch:
+#  schedule:
+#    - cron: 0 15 * * *
+
+permissions: write-all
 
 env:
-  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-  WRT_CONFIG: ${{inputs.WRT_CONFIG}}
-  WRT_THEME: ${{inputs.WRT_THEME}}
-  WRT_NAME: ${{inputs.WRT_NAME}}
-  WRT_SSID: ${{inputs.WRT_SSID}}
-  WRT_WORD: ${{inputs.WRT_WORD}}
-  WRT_IP: ${{inputs.WRT_IP}}
-  WRT_PW: ${{inputs.WRT_PW}}
-  WRT_REPO: ${{inputs.WRT_REPO}}
-  WRT_BRANCH: ${{inputs.WRT_BRANCH}}
-  WRT_SOURCE: ${{inputs.WRT_SOURCE}}
-  WRT_PACKAGE: ${{inputs.WRT_PACKAGE}}
-  WRT_TEST: ${{inputs.WRT_TEST}}
+  REPO_URL: https://github.com/RuijieNetworksCommunity/MT798X-6.6-24.10.git
+  REPO_BRANCH: mt798x-mt799x-mtwifi_be72pro_be68u
+  CONFIG_FILE: mt798x.config
+  DIY_SCRIPT: diy.sh
+  CLASH_KERNEL: amd64
+  CACHE_TOOLCHAIN: false
+  UPLOAD_BIN_DIR: true
+  FIRMWARE_RELEASE: true
+  FIRMWARE_TAG: mt798x
+  TZ: Asia/Shanghai
 
 jobs:
-  core:
-    name: ${{inputs.WRT_SOURCE}}
+  Build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Projects
-        uses: actions/checkout@main
+    - name: 检查服务器性能
+      run: |
+        echo "警告⚠"
+        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
+        echo -e "已知CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
+        echo "--------------------------CPU信息--------------------------"
+        echo "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "--------------------------内存信息--------------------------"
+        echo "已安装内存详细信息："
+        echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
+        echo "--------------------------硬盘信息--------------------------"
+        echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
-      - name: Initialization Environment
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo -E apt -yqq purge firefox
-          sudo -E apt -yqq update
-          sudo -E apt -yqq full-upgrade
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq autoclean
-          sudo -E apt -yqq clean
-          sudo -E apt -yqq install dos2unix libfuse-dev
-          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-          sudo -E systemctl daemon-reload
-          sudo -E timedatectl set-timezone "Asia/Shanghai"
+    - name: 初始化环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo -E apt -yqq install dos2unix
+        sudo -E apt -yqq install libfuse-dev
+        sudo -E apt -yqq autoremove --purge
+        sudo -E apt -yqq autoclean
+        sudo -E apt -yqq clean
+        sudo -E systemctl daemon-reload
+        sudo timedatectl set-timezone "$TZ"
 
-          sudo mkdir -p /mnt/build_wrt
-          sudo chown $USER:$USER /mnt/build_wrt
-          sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
+    - name: 合并磁盘
+      uses: easimon/maximize-build-space@master
+      with:
+        swap-size-mb: 1024
+        temp-reserve-mb: 100
+        root-reserve-mb: 1024
 
-      - name: Initialization Values
-        run: |
-          echo "WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d-%H.%M.%S")" >> $GITHUB_ENV
-          echo "WRT_MARK=${GITHUB_REPOSITORY%%/*}" >> $GITHUB_ENV
-          echo "WRT_INFO=${WRT_SOURCE%%/*}" >> $GITHUB_ENV
-          echo "WRT_TARGET=$(grep -m 1 -oP '^CONFIG_TARGET_\K[\w]+(?=\=y)' ./Config/$WRT_CONFIG.txt)" >> $GITHUB_ENV
-          echo "WRT_WIFI=wifi-yes" >> $GITHUB_ENV
-          echo "WRT_KVER=none" >> $GITHUB_ENV
-          echo "WRT_LIST=none" >> $GITHUB_ENV
+    - name: Checkout
+      uses: actions/checkout@main
 
-      - name: Clone Code
-        run: |
-          git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
+    - name: 克隆源代码
+      run: |
+        df -hT $GITHUB_WORKSPACE
+        git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
+        cd openwrt
+        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+        VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
+        echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
 
-          cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
+    - name: 生成变量
+      run: |
+        cp $CONFIG_FILE $OPENWRT_PATH/.config
+        cd $OPENWRT_PATH
+        make defconfig > /dev/null 2>&1
+        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
-          # 如果不存在 defconfig 则直接结束工作流
-          if [ ! -d "defconfig" ]; then
-            echo "defconfig directory not found, stopping workflow."
-            exit 0
-          fi
+    - name: 缓存工具链
+      if: env.CACHE_TOOLCHAIN == 'true'
+      uses: HiGarfield/cachewrtbuild@main
+      with:
+        ccache: false
+        mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+        prefix: ${{ env.OPENWRT_PATH }}
+    
+    - name: 更新安装feeds
+      run: |
+        cd $OPENWRT_PATH
+        sed -i '6d' feeds.conf.default
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
 
-          # GitHub Action 移除国内下载源
-          PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
-          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
-            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
-          fi
+    - name: 加载自定义配置
+      run: |
+        [ -e files ] && mv files $OPENWRT_PATH/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+        chmod +x $DIY_SCRIPT
+        cd $OPENWRT_PATH
+        $GITHUB_WORKSPACE/$DIY_SCRIPT
 
-      - name: Check Scripts
-        run: |
-          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
+    - name: 下载DL软件包
+      run: |
+        cd $OPENWRT_PATH
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
 
-      - name: Check Caches
-        id: check-cache
-        if: env.WRT_TEST != 'true'
-        uses: actions/cache@main
-        with:
-          key: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_HASH}}
-          restore-keys: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}
-          path: |
-            ./wrt/.ccache
-            ./wrt/staging_dir/host*
-            ./wrt/staging_dir/tool*
+    - name: 开始编译固件
+      id: compile
+      run: |
+        cd $OPENWRT_PATH
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+        echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
 
-      - name: Update Caches
-        if: env.WRT_TEST != 'true'
-        run: |
-          if [ -d "./wrt/staging_dir" ]; then
-            find "./wrt/staging_dir" -type d -name "stamp" -not -path "*target*" | while read -r DIR; do
-              find "$DIR" -type f -exec touch {} +
-            done
+    - name: 检查空间使用情况
+      if: (!cancelled())
+      run: df -hT
 
-            mkdir -p ./wrt/tmp && echo "1" > ./wrt/tmp/.build
+    - name: 将固件上传到Artifact
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      uses: actions/upload-artifact@main
+      with:
+        name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+        path: ${{ env.OPENWRT_PATH }}/bin
 
-            echo "toolchain skiped done!"
-          else
-            echo "caches missed!"
-          fi
+    - name: 整理文件
+      if: steps.compile.outputs.status == 'success'
+      run: |
+        cd $OPENWRT_PATH/bin/targets/*/*
+        cat sha256sums
+        cp $OPENWRT_PATH/.config build.config
+        mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
+        tar -zcf Packages.tar.gz packages
+        rm -rf packages feeds.buildinfo version.buildinfo
+        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
-          if ${{steps.check-cache.outputs.cache-hit != 'true'}}; then
-            CACHE_LIST=$(gh cache list --key "$WRT_CONFIG-$WRT_INFO" | cut -f 1)
-            for CACHE_KEY in $CACHE_LIST; do
-              gh cache delete $CACHE_KEY
-            done
+    - name: 生成tag
+      id: tag
+      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
+      run: |
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
-            echo "caches cleanup done!"
-          fi
-
-      - name: Update Feeds
-        run: |
-          cd ./wrt/
-
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-
-      - name: Custom Packages
-        run: |
-          cd ./wrt/package/
-
-          $GITHUB_WORKSPACE/Scripts/Packages.sh
-          $GITHUB_WORKSPACE/Scripts/Handles.sh
-
-      - name: Custom Settings
-        run: |
-          cd ./wrt/
-
-          if [[ "${WRT_CONFIG,,}" == *"test"* ]]; then
-            cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt >> .config
-          else
-            cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
-          fi
-
-          $GITHUB_WORKSPACE/Scripts/Settings.sh
-
-          make defconfig -j$(nproc) && make clean -j$(nproc)
-
-      - name: Download Packages
-        if: env.WRT_TEST != 'true'
-        run: |
-          cd ./wrt/
-
-          make download -j$(nproc)
-
-      - name: Compile Firmware
-        if: env.WRT_TEST != 'true'
-        run: |
-          cd ./wrt/
-
-          make -j$(nproc) || make -j1 V=s
-
-      - name: Machine Information
-        run: |
-          cd ./wrt/
-
-          echo "======================="
-          lscpu | grep -E "name|Core|Thread"
-          echo "======================="
-          df -h
-          echo "======================="
-          du -h --max-depth=1
-          echo "======================="
-
-      - name: Package Firmware
-        run: |
-          cd ./wrt/ && mkdir ./upload/
-
-          cp -f ./.config ./upload/Config-"$WRT_CONFIG"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_DATE".txt
-
-          if [[ $WRT_TEST != 'true' ]]; then
-            echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
-            echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
-
-            find ./bin/targets/ -iregex ".*\(buildinfo\|json\|sha256sums\|packages\)$" -exec rm -rf {} +
-
-            for FILE in $(find ./bin/targets/ -type f -iname "*$WRT_TARGET*") ; do
-              EXT=$(basename $FILE | cut -d '.' -f 2-)
-              NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($WRT_TARGET\).*")
-              NEW_FILE="$NAME"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_WIFI"-"$WRT_DATE"."$EXT"
-              mv -f $FILE ./upload/$NEW_FILE
-            done
-
-            find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
-
-            make clean -j$(nproc)
-          fi
-
-      - name: Release Firmware
-        uses: softprops/action-gh-release@master
-        with:
-          tag_name: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_BRANCH}}-${{env.WRT_DATE}}
-          files: ./wrt/upload/*.*
-          body: |
-            这是个平台固件包，内含多个设备！
-            请注意选择你需要的设备固件！
-            不要问，刷就完事了！
-
-            全系带闭源硬件加速，别问了！
-
-            源码：${{env.WRT_REPO}}
-            分支：${{env.WRT_BRANCH}}
-            提交：${{env.WRT_HASH}}
-
-            配置：${{env.WRT_CONFIG}}
-            平台：${{env.WRT_TARGET}}
-
-            登录地址：${{env.WRT_IP}}
-            登录密码：${{env.WRT_PW}}
-
-            WIFI名称：${{env.WRT_SSID}}
-            WIFI密码：${{env.WRT_WORD}}
-
-            内核版本：${{env.WRT_KVER}}
-            插件列表：${{env.WRT_LIST}}
+    - name: 发布固件到Release
+      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
+      uses: ncipollo/release-action@main
+      with:
+        allowUpdates: true
+        tag: ${{ steps.tag.outputs.release_tag }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: ${{ env.FIRMWARE_PATH }}/*
+        body: |
+          ### 🧊 固件版本
+          - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+          - ${{ env.VERSION_INFO }}
