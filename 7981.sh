@@ -49,4 +49,4 @@ git clone --depth 1 https://github.com/y9858/rust feeds/packages/lang/rust
 rm -rf feeds/luci/themes/luci-theme-material
 git clone --depth 1 https://github.com/y9858/luci-theme-material feeds/luci/themes/luci-theme-material
 
-git clone --depth 1 https://github.com/y9858/luci-app-wifihistory feeds/luci/applications/luci-app-wifihistory
+git clone --depth 1 https://github.com/y9858/luci-app-wifihistory package/luci-app-wifihistory
