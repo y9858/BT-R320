@@ -93,7 +93,6 @@ jobs:
     - name: 更新安装feeds
       run: |
         cd $OPENWRT_PATH
-        sed -i '2s/openwrt-24.10/master/' feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
