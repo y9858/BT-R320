@@ -40,9 +40,6 @@ curl -o feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/sta
 rm -rf feeds/luci/modules/luci-base/po/zh_Hans/base.po
 curl -o feeds/luci/modules/luci-base/po/zh_Hans/base.po https://raw.githubusercontent.com/y9858/Home-mod/refs/heads/main/base.po
 
-rm -rf package/emortal/autocore/files/generic/cpuinfo
-curl -o package/emortal/autocore/files/generic/cpuinfo https://raw.githubusercontent.com/y9858/Home-mod/refs/heads/main/cpuinfo
-
 rm -rf feeds/packages/lang/golang
 git clone --depth 1 https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
 
