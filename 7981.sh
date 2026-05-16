@@ -26,12 +26,9 @@ mv package/new/custom/speedtest-cli package/new
 rm -rf package/new/custom
 
 git clone --depth 1 https://github.com/gdy666/luci-app-lucky package/luci-app-lucky
-git clone --depth 1 https://github.com/sbwml/luci-app-openlist2 package/luci-app-openlist2
-git clone --depth 1 https://github.com/y9858/luci-app-alist package/luci-app-alist
 git clone --depth 1 https://github.com/nikkinikki-org/OpenWrt-nikki package/OpenWrt-nikki
 rm -rf package/OpenWrt-nikki/luci-app-nikki/po/zh_Hans/nikki.po
 curl -o package/OpenWrt-nikki/luci-app-nikki/po/zh_Hans/nikki.po https://raw.githubusercontent.com/y9858/Home-mod/refs/heads/main/nikki.po
-git clone --depth 1 https://github.com/nikkinikki-org/OpenWrt-momo package/OpenWrt-momo
 
 # 修改首页显示
 rm -rf feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js
