@@ -41,7 +41,7 @@ rm -rf feeds/packages/lang/golang
 git clone --depth 1 https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
 
 rm -rf feeds/packages/lang/rust
-git clone --depth 1 https://github.com/y9858/rust feeds/packages/lang/rust
+git clone --depth 1 https://github.com/sbwml/packages_lang_rust feeds/packages/lang/rust
 
 rm -rf feeds/luci/themes/luci-theme-material
 git clone --depth 1 https://github.com/y9858/luci-theme-material feeds/luci/themes/luci-theme-material
