@@ -12,7 +12,6 @@ env:
   REPO_BRANCH: openwrt-24.10-6.6
   CONFIG_FILE: 7981.config
   DIY_SCRIPT: 7981.sh
-  CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: false
   UPLOAD_BIN_DIR: true
   FIRMWARE_RELEASE: true
@@ -74,7 +73,6 @@ jobs:
       run: |
         cp $CONFIG_FILE $OPENWRT_PATH/.config
         cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
         SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
         DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
@@ -107,7 +105,6 @@ jobs:
     - name: 下载DL软件包
       run: |
         cd $OPENWRT_PATH
-        make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
@@ -141,7 +138,7 @@ jobs:
         cp $OPENWRT_PATH/.config build.config
         mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
         tar -zcf Packages.tar.gz packages
-        rm -rf packages feeds.buildinfo version.buildinfo
+        rm -rf packages *bl2.bin
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
     - name: 生成tag
