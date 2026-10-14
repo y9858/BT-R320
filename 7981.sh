@@ -27,9 +27,6 @@ git clone --depth 1 https://github.com/nikkinikki-org/OpenWrt-nikki package/Open
 git clone --depth 1 https://github.com/y9858/luci-app-clientstatus package/luci-app-clientstatus
 rm -rf feeds/packages/net/speedtest-cli
 git clone --depth 1 https://github.com/y9858/luci-app-netspeedtest package/luci-app-netspeedtest
-rm -rf feeds/luci/applications/luci-app-dae
-rm -rf feeds/packages/net/dae
-git clone --depth 1 https://github.com/QiuSimons/luci-app-dae package/luci-app-dae
 
 # 修改首页显示
 rm -rf feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js
